@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "rn-radio",
+    "slug": "rn-radio",
+    "version": "1.0.0",
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  },
+  "name": "rn-radio"
+}
