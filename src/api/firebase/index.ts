@@ -8,23 +8,32 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
+  User,
 } from "firebase/auth";
 
-import ENV from "react-native-dotenv";
+import {
+  FIREBASE_API_KEY,
+  FIREBASE_AUTH_DOMAIN,
+  FIREBASE_DATABASE_URL,
+  FIREBASE_PROJECT_ID,
+  FIREBASE_STORAGE_BUCKET,
+  FIREBASE_MESSAGING_SENDER_ID,
+  FIREBASE_APP_ID,
+} from "@env";
 
 const firebaseConfig = {
-  apiKey: ENV.FIREBASE_API_KEY,
-  authDomain: ENV.FIREBASE_AUTH_DOMAIN,
-  databaseURL: ENV.FIREBASE_DATABASE_URL,
-  projectId: ENV.FIREBASE_PROJECT_ID,
-  storageBucket: ENV.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: ENV.FIREBASE_MESSAGING_SENDER_ID,
-  appId: ENV.FIREBASE_APP_ID,
+  apiKey: FIREBASE_API_KEY,
+  authDomain: FIREBASE_AUTH_DOMAIN,
+  databaseURL: FIREBASE_DATABASE_URL,
+  projectId: FIREBASE_PROJECT_ID,
+  storageBucket: FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: FIREBASE_MESSAGING_SENDER_ID,
+  appId: FIREBASE_APP_ID,
 };
 
 export const firebaseApp = initializeApp(firebaseConfig);
 
-export async function getDoc(path, onValueCallback = null) {
+/*export async function getDoc(path, onValueCallback = null) {
   const dbRef = ref(getDatabase(firebaseApp), path);
 
   return onValueCallback
@@ -64,43 +73,34 @@ export function onRetrieveLoggedUser(callback) {
 
   onAuthStateChanged(auth, callback);
 }
-
-export async function sendVerificationEmail(user) {
+*/
+export async function sendVerificationEmail(user: User): Promise<void> {
   try {
-    return await sendEmailVerification(user);
-  } catch (err) {
-    console.log(err.code);
-    let message;
-
-    if (err.code) {
-      switch (err.code) {
-        case "auth/too-many-requests":
-          message =
-            "ERRO: Muitas requisições feitas. Aguarde um instante e tente novamente";
-          break;
-        default:
-          message = "ERRO: Falha ao enviar Email de verificação";
-      }
-    } else {
-      message = "ERRO: Falha ao realizar login. Tente novamente mais tarde";
-    }
-
-    throw new Error(message);
+    await sendEmailVerification(user);
+  } catch {
+    throw new Error(
+      "Conta criada mas houve uma falha para enviar o email de verificação. Tente fazer login para tentarmos enviar o email novamente"
+    );
   }
 }
 
-export async function createUser(email, password, name) {
+export async function createUser(
+  email: string,
+  password: string,
+  name: string
+): Promise<void> {
   try {
     const auth = getAuth(firebaseApp);
 
     const res = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(res.user, { displayName: name });
-    return await sendVerificationEmail(res.user);
+    await sendVerificationEmail(res.user);
   } catch (err) {
-    console.log(err.code);
     let message;
 
-    if (err.code) {
+    if (err.message.startsWith("Conta criada")) {
+      message = err.message;
+    } else {
       switch (err.code) {
         case "auth/too-many-requests":
           message =
@@ -112,20 +112,20 @@ export async function createUser(email, password, name) {
         case "auth/email-already-in-use":
           message = "ERRO: Email já cadastrado";
           break;
+        case "auth/invalid-password":
+          message = "ERRO: Senha inválida";
+          break;
         default:
+          console.log(err.code);
           message = "ERRO: Falha ao criar usuário. Tente novamente mais tarde";
       }
-    } else if (err.message.startsWith("ERRO: ")) {
-      message = err.message;
-    } else {
-      message = "ERRO: Falha ao criar usuário. Tente novamente mais tarde";
     }
 
     throw new Error(message);
   }
 }
 
-export async function login(email, password) {
+/*export async function login(email, password) {
   try {
     const auth = getAuth(firebaseApp);
 
@@ -180,3 +180,4 @@ export async function logout() {
     throw new Error(message);
   }
 }
+*/

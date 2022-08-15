@@ -21,14 +21,14 @@ type LoginViewNavigationProp = NativeStackNavigationProp<
   RootStackPropsList,
   "Login"
 >;
-type props = {
+type LoginProps = {
   navigation: LoginViewNavigationProp;
 };
 
 //let window = Dimensions.get("window");
 //const screen = Dimensions.get("screen");
 
-export function Login({ navigation }: props): JSX.Element {
+export function Login({ navigation }: LoginProps): JSX.Element {
   const [dimensions, setDimensions] = useState(Dimensions.get("window"));
   const vw = dimensions.width;
   const vh = dimensions.height;

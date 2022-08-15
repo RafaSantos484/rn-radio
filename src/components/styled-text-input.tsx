@@ -8,6 +8,7 @@ export function StyledTextInput(props: {
   setValue: Dispatch<SetStateAction<string>>;
   keyboardType: KeyboardTypeOptions;
   label: string;
+  maxLength: number
 }) {
   return (
     <TextInput
@@ -17,6 +18,7 @@ export function StyledTextInput(props: {
       secureTextEntry={props.label.toLowerCase().indexOf("senha") !== -1}
       label={props.label}
       keyboardType={props.keyboardType}
+      maxLength={props.maxLength}
       value={props.value}
       onChangeText={props.setValue}
     />
