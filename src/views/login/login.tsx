@@ -8,14 +8,25 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
-import { Text, Button } from "@react-native-material/core";
+import { Text, Button, ActivityIndicator } from "@react-native-material/core";
 import { useEffect, useState } from "react";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+//import app from "@react-native-firebase/app";
 import { RootStackPropsList } from "../../../App";
 
 import { constants } from "../../constants";
 import Background from "../../../assets/background.svg";
 import { StyledTextInput } from "../../components/styled-text-input";
+import AlertComponent, {
+  alertComponentViewStyle,
+} from "../../components/alert-component";
+import { connect } from "react-redux";
+import { AlertInfo, setAlertInfo, setUser, User } from "../../redux/actions";
+import {
+  login,
+  onRetrieveLoggedUser,
+  sendVerificationEmail,
+} from "../../api/firebase";
 
 type LoginViewNavigationProp = NativeStackNavigationProp<
   RootStackPropsList,
@@ -23,30 +34,110 @@ type LoginViewNavigationProp = NativeStackNavigationProp<
 >;
 type LoginProps = {
   navigation: LoginViewNavigationProp;
+  userReducer: User;
+  dispatch: Function;
 };
 
-//let window = Dimensions.get("window");
-//const screen = Dimensions.get("screen");
-
-export function Login({ navigation }: LoginProps): JSX.Element {
+function Login(props: LoginProps): JSX.Element {
   const [dimensions, setDimensions] = useState(Dimensions.get("window"));
+  const [isAwatingAsyncEvent, setIsAwatingAsyncEvent] = useState(false);
+  const [isRetrievingUser, setIsRetrievingUser] = useState(true);
+  const { navigation } = props;
   const vw = dimensions.width;
   const vh = dimensions.height;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  /*function resetFields() {
+  function resetFields(): void {
     setEmail("");
     setPassword("");
-  }*/
+  }
+
+  async function handleLogin(): Promise<void> {
+    Keyboard.dismiss();
+
+    const inputs = [email, password];
+    if (inputs.findIndex((input) => input === "") !== -1) {
+      return props.dispatch(
+        setAlertInfo({ message: "Preencha todos os campos", severity: "error" })
+      );
+    }
+    if (password.length < 8) {
+      return props.dispatch(
+        setAlertInfo({
+          message: "A senha deve ter, no mínimo, 8 caracteres",
+          severity: "error",
+        })
+      );
+    }
+
+    setIsAwatingAsyncEvent(true);
+    login(email, password)
+      .then(async (user) => {
+        if (email !== "generico@email.com" && !user.emailVerified) {
+          await sendVerificationEmail(user);
+          props.dispatch(
+            setAlertInfo({
+              severity: "warning",
+              message:
+                "Email não verificado. um novo email de verificação foi enviado",
+            })
+          );
+        }
+      })
+      .catch((err) =>
+        props.dispatch(
+          setAlertInfo({
+            severity: "error",
+            message: err.message,
+          })
+        )
+      )
+      .finally(() => setIsAwatingAsyncEvent(false));
+  }
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener("change", ({ window }) => {
       setDimensions(window);
     });
+
+    if (isRetrievingUser) {
+      onRetrieveLoggedUser((user) => {
+        setIsRetrievingUser(false);
+
+        if (props.userReducer?.isAnonymous) return;
+
+        let newUser = null;
+        if (user && user.emailVerified) {
+          newUser = {
+            favorites: [],
+            history: [],
+            id: user.uid,
+            name: user.displayName ? user.displayName : "",
+            isAnonymous: false,
+          };
+        }
+        props.dispatch(setUser(newUser));
+      });
+    }
+
+    navigation.addListener("blur", () => resetFields());
+
+    if (props.userReducer) {
+      navigation.navigate("Dashboard");
+    }
+
     return () => subscription?.remove();
   });
+
+  if (isRetrievingUser) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color={constants.colors.mainOrange} />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -62,8 +153,14 @@ export function Login({ navigation }: LoginProps): JSX.Element {
           right: 0,
         }}
       />
+      <View style={alertComponentViewStyle}>
+        <AlertComponent />
+      </View>
 
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <TouchableWithoutFeedback
+        onPress={Keyboard.dismiss}
+        style={{ position: "absolute", zIndex: 2 }}
+      >
         <View style={styles.container}>
           <View style={styles.texts}>
             <Text variant="h5" color="wheat">
@@ -82,8 +179,10 @@ export function Login({ navigation }: LoginProps): JSX.Element {
                   textDecorationLine: "underline",
                 }}
                 onPress={() => {
-                  //resetFields();
-                  navigation.navigate("Register");
+                  if (!isAwatingAsyncEvent) {
+                    resetFields();
+                    navigation.navigate("Register");
+                  }
                 }}
               >
                 crie sua conta agora!
@@ -105,14 +204,16 @@ export function Login({ navigation }: LoginProps): JSX.Element {
             <StyledTextInput
               label="Email"
               keyboardType="email-address"
+              maxLength={50}
               value={email}
-              setValue={setEmail}
+              setValue={(value) => setEmail(value.toString().trim())}
             />
             <StyledTextInput
               label="Senha"
               keyboardType="ascii-capable"
+              maxLength={15}
               value={password}
-              setValue={setPassword}
+              setValue={(value) => setPassword(value.toString().trim())}
             />
 
             <View style={{ marginTop: 0.04 * vh, alignItems: "center" }}>
@@ -120,12 +221,15 @@ export function Login({ navigation }: LoginProps): JSX.Element {
                 title="Login"
                 color={constants.colors.mainOrange}
                 titleStyle={{ color: "white" }}
+                onPress={handleLogin}
+                disabled={isAwatingAsyncEvent}
               />
               <Button
                 title="Esqueci a senha"
                 variant="text"
                 color={constants.colors.mainRed}
                 style={{ marginTop: 0.02 * vh }}
+                disabled={isAwatingAsyncEvent}
               />
             </View>
           </View>
@@ -153,3 +257,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
 });
+
+const mapStateToProps = (state: any) => state;
+
+export default connect(mapStateToProps)(Login);

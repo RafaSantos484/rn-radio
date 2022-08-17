@@ -52,6 +52,13 @@ function Register(props: RegisterProps): JSX.Element {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  function resetFields() {
+    setEmail("");
+    setName("");
+    setPassword("");
+    setConfirmPassword("");
+  }
+
   function createAlert(message: string) {
     Alert.alert("Conta criada", message, [
       { text: "Ok", onPress: () => navigation.goBack() },
@@ -114,6 +121,8 @@ function Register(props: RegisterProps): JSX.Element {
     const subscription = Dimensions.addEventListener("change", ({ window }) => {
       setDimensions(window);
     });
+    navigation.addListener("blur", () => resetFields());
+
     return () => subscription?.remove();
   });
 
@@ -231,6 +240,6 @@ const styles = StyleSheet.create({
   textInput: { width: "80%" },
 });
 
-const mapStateToProps = (state) => state.alertComponentReducer;
+const mapStateToProps = (state: any) => state.alertComponentReducer;
 
 export default connect(mapStateToProps)(Register);

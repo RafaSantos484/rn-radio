@@ -5,14 +5,37 @@ import { connect } from "react-redux";
 import { resetAlertInfo } from "../redux/actions";
 import Animated, { SlideInLeft } from "react-native-reanimated";
 
-type Props = { dispatch: Function; message: string; severity: string };
+enum Icons {
+  error = "exclamationcircle",
+  info = "infocirlce",
+  warning = "warning",
+}
 
-function AlertComponent(props: Props): JSX.Element {
-  if (props.message === "" || props.severity === "") return <></>;
+type Props = {
+  dispatch: Function;
+  message: string;
+  severity: "error" | "info" | "warning";
+};
 
-  const viewColors = { error: "#eda9a8", info: "#8cd1f1" };
-  const iconNames = { error: "exclamationcircle", info: "infocirlce" };
-  const textColors = { error: "#c62828", info: "#01579b" };
+type SeverityColors = {
+  error: string;
+  info: string;
+  warning: string;
+};
+
+function AlertComponent(props: Props | undefined): JSX.Element {
+  if (!props || props.message === "") return <></>;
+
+  const viewColors: SeverityColors = {
+    error: "#eda9a8",
+    info: "#8cd1f1",
+    warning: "#ffbd5a",
+  };
+  const textColors: SeverityColors = {
+    error: "#c62828",
+    info: "#01579b",
+    warning: "#e65100",
+  };
 
   return (
     <Animated.View
@@ -25,13 +48,10 @@ function AlertComponent(props: Props): JSX.Element {
         padding: 15,
         borderRadius: 10,
         width: "80%",
-        /*position: "absolute",
-        top: 50,
-        zIndex: 11,*/
       }}
     >
       <AntDesign
-        name={iconNames[props.severity]}
+        name={Icons[props.severity]}
         size={20}
         style={{ marginRight: 15 }}
         color={textColors[props.severity]}
@@ -53,7 +73,7 @@ function AlertComponent(props: Props): JSX.Element {
   );
 }
 
-const mapStateToProps = (state) => state.alertComponentReducer;
+const mapStateToProps = (state: any) => state.alertComponentReducer;
 
 export const alertComponentViewStyle: ViewStyle = {
   position: "absolute",
